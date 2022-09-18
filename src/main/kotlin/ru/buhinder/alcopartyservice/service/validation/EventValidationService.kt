@@ -1,7 +1,5 @@
 package ru.buhinder.alcopartyservice.service.validation
 
-import java.time.Instant
-import java.util.UUID
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import reactor.kotlin.core.publisher.switchIfEmpty
@@ -14,6 +12,9 @@ import ru.buhinder.alcopartyservice.controller.advice.exception.InsufficientPerm
 import ru.buhinder.alcopartyservice.dto.EventDto
 import ru.buhinder.alcopartyservice.entity.enums.EventStatus.ENDED
 import ru.buhinder.alcopartyservice.repository.facade.EventDaoFacade
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
 
 @Service
 class EventValidationService(
@@ -35,28 +36,37 @@ class EventValidationService(
     }
 
     fun validateDates(dto: EventDto): Mono<EventDto> {
-        val startDate = dto.startDate!!
-        val endDate = dto.endDate!!
-        val now = Instant.now().toEpochMilli()
-
-        if (startDate >= endDate) {
-            return Mono.error {
-                EntityCannotBeCreatedException(
-                    message = "Event start date and time must be earlier than the end date and time",
-                    payload = emptyMap()
-                )
-            }
-        }
-
-        if (endDate <= now) {
-            return Mono.error {
-                EntityCannotBeCreatedException(
-                    message = "Event end date and time must be greater than the current date and time",
-                    payload = emptyMap()
-                )
-            }
-        }
         return dto.toMono()
+            .map {
+                val startDate = dto.startDate!!
+                val endDate = dto.endDate!!
+                val now = Instant.now().toEpochMilli()
+                val nowMinusTwoWeeks = now.minus(Duration.ofDays(14).toMillis())
+                val nowPlusTenYears = now.plus(Duration.ofDays(3652).toMillis())
+                when {
+                    startDate < nowMinusTwoWeeks -> throw EntityCannotBeCreatedException(
+                        message = "Event start date & time must be less than 14 days before now",
+                        payload = emptyMap()
+                    )
+
+                    startDate > endDate -> throw EntityCannotBeCreatedException(
+                        message = "Event start date & time must be before Event end date & time",
+                        payload = emptyMap()
+                    )
+
+                    endDate < now -> throw EntityCannotBeCreatedException(
+                        message = "Event end date & time must be after the current date & time",
+                        payload = emptyMap()
+                    )
+
+                    endDate > nowPlusTenYears -> throw EntityCannotBeCreatedException(
+                        message = "Event End Date must be within 10 years",
+                        payload = emptyMap()
+                    )
+
+                    else -> dto
+                }
+            }
     }
 
     fun validateIsEventCreator(eventIdAlcoholicIdTuple: Tuple2<UUID, UUID>): Mono<Tuple2<UUID, UUID>> {
