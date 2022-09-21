@@ -19,6 +19,7 @@ class EventEntityToEventResponseConverter : Converter<EventEntity, EventResponse
             startDate = source.startDate,
             endDate = source.endDate,
             createdBy = source.createdBy,
+            mainPhotoId = source.mainPhotoId,
         )
     }
 

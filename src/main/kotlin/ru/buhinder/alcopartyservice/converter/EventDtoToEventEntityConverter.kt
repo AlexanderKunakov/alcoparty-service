@@ -1,12 +1,12 @@
 package ru.buhinder.alcopartyservice.converter
 
+import java.time.Instant
+import java.util.UUID
 import org.springframework.core.convert.converter.Converter
 import org.springframework.stereotype.Component
 import ru.buhinder.alcopartyservice.entity.EventEntity
 import ru.buhinder.alcopartyservice.entity.enums.EventStatus
 import ru.buhinder.alcopartyservice.model.EventModel
-import java.time.Instant
-import java.util.UUID
 
 @Component
 class EventDtoToEventEntityConverter : Converter<EventModel, EventEntity> {
@@ -25,6 +25,7 @@ class EventDtoToEventEntityConverter : Converter<EventModel, EventEntity> {
             startDate = startDate,
             endDate = dto.endDate!!,
             createdBy = source.alcoholicId,
+            mainPhotoId = source.mainPhotoId,
         )
     }
 

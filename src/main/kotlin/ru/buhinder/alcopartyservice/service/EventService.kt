@@ -22,6 +22,7 @@ import ru.buhinder.alcopartyservice.repository.facade.EventPhotoDaoFacade
 import ru.buhinder.alcopartyservice.service.strategy.EventStrategyRegistry
 import ru.buhinder.alcopartyservice.service.validation.EventAlcoholicValidationService
 import ru.buhinder.alcopartyservice.service.validation.ImageValidationService
+import ru.buhinder.alcopartyservice.util.removeFirst
 
 @Service
 class EventService(
@@ -39,10 +40,10 @@ class EventService(
     fun create(dto: EventDto, alcoholicId: UUID, images: List<FilePart>): Mono<IdResponse> {
         return imageValidationService.validateImageFormat(images)
             .flatMap { eventStrategyRegistry.get(dto.type) }
-            .flatMap { it.create(dto, alcoholicId) }
+            .flatMap { it.create(dto, alcoholicId, images.firstOrNull()) }
             .flatMap { res ->
                 val eventId = res.id
-                minioService.saveEventImages(images)
+                minioService.saveEventImages(images.removeFirst())
                     .map { buildPhotosList(it, eventId) }
                     .flatMap { eventPhotoDaoFacade.insertAll(it) }
                     .map { IdResponse(eventId) }
@@ -81,15 +82,12 @@ class EventService(
 
     fun getAllEvents(alcoholicId: UUID, page: Int, pageSize: Int): Mono<PageableResponse<MultipleEventResponse>> {
         return eventDaoFacade.findAllAndAlcoholicIsNotBanned(alcoholicId, page, pageSize)
-            .map { conversionService.convert(it, EventResponse::class.java)!! }
             .flatMap { res ->
-                val eventId = res.id
+                val eventId = res.id!!
                 eventAlcoholicDaoFacade.findAllByEventId(eventId).any { it.alcoholicId == alcoholicId }
-                    .flatMap { isParticipant ->
-                        eventPhotoDaoFacade.findFirstByEventId(eventId)
-                            .map { it.photoId }
-                            .map { MultipleEventResponse(res, it, isParticipant) }
-                            .switchIfEmpty { MultipleEventResponse(res, null, isParticipant).toMono() }
+                    .map {
+                        val eventResponse = conversionService.convert(res, EventResponse::class.java)!!
+                        MultipleEventResponse(eventResponse, it)
                     }
             }
             .collectList()
@@ -105,7 +103,7 @@ class EventService(
         return eventDaoFacade.getByIdAndAlcoholicIsNotBanned(eventId, alcoholicId)
             .map { conversionService.convert(it, EventResponse::class.java)!! }
             .flatMap { res ->
-                eventPhotoDaoFacade.findAllByEventId(eventId)
+                eventPhotoDaoFacade.findAllByEventIdAndTypeNotMain(eventId)
                     .map { it.photoId }
                     .collectList()
                     .flatMap { photos ->
@@ -121,7 +119,7 @@ class EventService(
         return eventDaoFacade.getByInvitationLinkAndNotEnded(invitationLink)
             .map { conversionService.convert(it, EventResponse::class.java)!! }
             .flatMap { event ->
-                eventPhotoDaoFacade.findAllByEventId(event.id)
+                eventPhotoDaoFacade.findAllByEventIdAndTypeNotMain(event.id)
                     .map { it.photoId }
                     .collectList()
                     .flatMap { photos ->
