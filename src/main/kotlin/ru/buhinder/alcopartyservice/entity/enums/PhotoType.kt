@@ -4,4 +4,5 @@ enum class PhotoType {
     ACTIVE,
     ENDED,
     MAIN,
+    DELETED,
 }

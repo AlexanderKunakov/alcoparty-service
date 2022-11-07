@@ -26,5 +26,23 @@ class EventImageDaoFacade(
         return eventPhotoRepository.findAllByEventIdAndTypeNot(eventId, PhotoType.MAIN)
     }
 
+    fun findNextMainPhotoEntity(eventId: UUID): Mono<EventPhotoEntity> {
+        return eventPhotoRepository.findFirstByEventIdAndTypeNotOrderByCreatedAtAsc(
+            eventId,
+            PhotoType.MAIN
+        )
+    }
+
     fun findById(imageId: UUID): Mono<EventPhotoEntity> = eventPhotoRepository.findById(imageId)
+
+    fun delete(eventPhotoEntity: EventPhotoEntity): Mono<Void> {
+        return changePhotoType(eventPhotoEntity, PhotoType.DELETED).then()
+    }
+
+    fun changePhotoType(
+        eventPhotoEntity: EventPhotoEntity,
+        newType: PhotoType,
+    ): Mono<EventPhotoEntity> = eventPhotoEntity
+        .apply { type = newType }
+        .let { eventPhotoRepository.save(it) }
 }

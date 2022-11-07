@@ -2,7 +2,9 @@ package ru.buhinder.alcopartyservice.service
 
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.switchIfEmpty
 import reactor.util.function.Tuples
 import ru.buhinder.alcopartyservice.dto.response.IdResponse
 import ru.buhinder.alcopartyservice.entity.EventEntity
@@ -40,6 +42,7 @@ class EventImageService(
             .flatMap { minioService.getImage(it.photoId) }
     }
 
+    @Transactional
     fun deletePhotoById(imageId: UUID, alcoholicId: UUID): Mono<Void> {
         return eventDaoFacade.findByImageId(imageId)
             .flatMap { event ->
@@ -47,13 +50,10 @@ class EventImageService(
                     .flatMap { eventImageDaoFacade.findById(imageId) }
                     .map { Tuples.of(event, it) }
             }
-            .map {
-
-            }
-            .then()
+            .flatMap { deletePhotoFromEvent(it.t1, it.t2) }
     }
 
-    private fun deletePhoto(
+    private fun deletePhotoFromEvent(
         eventEntity: EventEntity,
         eventPhotoEntity: EventPhotoEntity,
     ): Mono<Void> {
@@ -65,13 +65,26 @@ class EventImageService(
     }
 
     private fun deleteNotMainPhoto(eventPhotoEntity: EventPhotoEntity): Mono<Void> {
-        TODO("Not yet implemented")
+        return eventImageDaoFacade.delete(eventPhotoEntity)
     }
 
     private fun deleteMainPhoto(
         eventEntity: EventEntity,
-        eventPhotoEntity: EventPhotoEntity
+        eventPhotoEntity: EventPhotoEntity,
     ): Mono<Void> {
-        TODO("Not yet implemented")
+        return eventImageDaoFacade.findNextMainPhotoEntity(eventEntity.id!!)
+            .flatMap { eventImageDaoFacade.changePhotoType(it, PhotoType.MAIN) }
+            .flatMap { eventImageDaoFacade.changePhotoType(eventPhotoEntity, PhotoType.DELETED) }
+            .flatMap { setNewMainPhoto(eventEntity, it) }
+            .then()
+            .switchIfEmpty { deleteNotMainPhoto(eventPhotoEntity) }
     }
+
+    private fun setNewMainPhoto(
+        eventEntity: EventEntity,
+        it: EventPhotoEntity
+    ): Mono<EventEntity> = eventEntity
+        .apply { mainPhotoId = it.id!! }
+        .let { eventDaoFacade.save(it) }
+        .map { it }
 }

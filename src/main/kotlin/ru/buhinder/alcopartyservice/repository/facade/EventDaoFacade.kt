@@ -18,7 +18,7 @@ class EventDaoFacade(
         const val NOT_FOUND_MESSAGE = "Event not found"
     }
 
-    fun insert(eventEntity: EventEntity): Mono<EventEntity> {
+    fun save(eventEntity: EventEntity): Mono<EventEntity> {
         return eventRepository.save(eventEntity)
     }
 

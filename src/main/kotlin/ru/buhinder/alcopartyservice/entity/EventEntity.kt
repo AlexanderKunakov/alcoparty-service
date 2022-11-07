@@ -1,11 +1,11 @@
 package ru.buhinder.alcopartyservice.entity
 
-import java.time.Instant
-import java.util.UUID
 import org.springframework.data.annotation.Version
 import org.springframework.data.relational.core.mapping.Table
 import ru.buhinder.alcopartyservice.entity.enums.EventStatus
 import ru.buhinder.alcopartyservice.entity.enums.EventType
+import java.time.Instant
+import java.util.UUID
 
 @Table("event")
 open class EventEntity(
@@ -21,5 +21,5 @@ open class EventEntity(
     val createdBy: UUID,
     @Version
     open var version: Int? = null,
-    val mainPhotoId: UUID? = null,
+    var mainPhotoId: UUID? = null,
 ) : AbstractAuditable(id)

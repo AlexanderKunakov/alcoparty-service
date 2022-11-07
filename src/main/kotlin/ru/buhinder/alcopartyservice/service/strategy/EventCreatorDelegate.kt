@@ -30,13 +30,13 @@ class EventCreatorDelegate(
             .flatMap { eventValidationService.validateDates(dto) }
             .map { conversionService.convert(EventModel(it, alcoholicId, mainImageId), EventEntity::class.java)!! }
             .flatMap { eventEntity ->
-                eventDaoFacade.insert(eventEntity)
+                eventDaoFacade.save(eventEntity)
                     .flatMap { event ->
                         if (event.mainPhotoId != null) {
                             eventImageDaoFacade.save(
                                 EventPhotoEntity(
                                     eventId = event.id!!,
-                                    photoId = event.mainPhotoId,
+                                    photoId = event.mainPhotoId!!,
                                     type = PhotoType.MAIN
                                 )
                             ).map { it }

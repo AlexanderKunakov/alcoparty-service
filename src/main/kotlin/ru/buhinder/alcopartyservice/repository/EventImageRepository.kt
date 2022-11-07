@@ -15,4 +15,9 @@ interface EventImageRepository : ReactiveCrudRepository<EventPhotoEntity, UUID> 
 
     fun findAllByEventIdAndTypeNot(eventId: UUID, type: PhotoType): Flux<EventPhotoEntity>
 
+    fun findFirstByEventIdAndTypeNotOrderByCreatedAtAsc(
+        eventId: UUID,
+        type: PhotoType
+    ): Mono<EventPhotoEntity>
+
 }

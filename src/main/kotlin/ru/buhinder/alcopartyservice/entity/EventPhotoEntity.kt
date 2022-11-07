@@ -11,7 +11,7 @@ open class EventPhotoEntity(
     id: UUID? = null,
     val eventId: UUID,
     val photoId: UUID,
-    val type: PhotoType,
+    var type: PhotoType,
     private val createdAt: Long? = Instant.now().toEpochMilli(),
     @Version
     open var version: Int? = null,
