@@ -3,9 +3,6 @@ package ru.buhinder.alcopartyservice.service
 import io.minio.GetObjectArgs
 import io.minio.MinioClient
 import io.minio.UploadObjectArgs
-import java.io.File
-import java.util.UUID
-import java.util.stream.Collectors
 import org.springframework.http.MediaType.IMAGE_JPEG_VALUE
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
@@ -14,6 +11,9 @@ import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import reactor.kotlin.core.publisher.toMono
 import ru.buhinder.alcopartyservice.config.properties.MinioProperties
+import java.io.File
+import java.util.UUID
+import java.util.stream.Collectors
 
 
 @Service
@@ -22,14 +22,14 @@ class MinioService(
     private val minioProperties: MinioProperties,
 ) {
 
-    fun saveEventImages(images: List<FilePart>): Mono<Set<UUID>> {
+    fun saveImages(images: List<FilePart>): Mono<Set<UUID>> {
         return Flux.fromIterable(images)
             .publishOn(Schedulers.boundedElastic())
             .map { saveOneImage(it) }
             .collect(Collectors.toSet())
     }
 
-    fun saveEventImage(image: FilePart): Mono<UUID> {
+    fun saveImage(image: FilePart): Mono<UUID> {
         return image.toMono()
             .publishOn(Schedulers.boundedElastic())
             .map { saveOneImage(it) }

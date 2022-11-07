@@ -1,6 +1,5 @@
 package ru.buhinder.alcopartyservice.service.strategy
 
-import java.util.UUID
 import org.springframework.core.convert.ConversionService
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
@@ -14,8 +13,9 @@ import ru.buhinder.alcopartyservice.entity.enums.PhotoType
 import ru.buhinder.alcopartyservice.model.EventModel
 import ru.buhinder.alcopartyservice.repository.facade.EventAlcoholicDaoFacade
 import ru.buhinder.alcopartyservice.repository.facade.EventDaoFacade
-import ru.buhinder.alcopartyservice.repository.facade.EventPhotoDaoFacade
+import ru.buhinder.alcopartyservice.repository.facade.EventImageDaoFacade
 import ru.buhinder.alcopartyservice.service.validation.EventValidationService
+import java.util.UUID
 
 @Component
 class EventCreatorDelegate(
@@ -23,7 +23,7 @@ class EventCreatorDelegate(
     private val eventAlcoholicDaoFacade: EventAlcoholicDaoFacade,
     private val eventValidationService: EventValidationService,
     private val conversionService: ConversionService,
-    private val eventPhotoDaoFacade: EventPhotoDaoFacade,
+    private val eventImageDaoFacade: EventImageDaoFacade,
 ) {
     fun create(dto: EventDto, alcoholicId: UUID, mainImageId: UUID?): Mono<EventResponse> {
         return dto.toMono()
@@ -33,7 +33,7 @@ class EventCreatorDelegate(
                 eventDaoFacade.insert(eventEntity)
                     .flatMap { event ->
                         if (event.mainPhotoId != null) {
-                            eventPhotoDaoFacade.insert(
+                            eventImageDaoFacade.save(
                                 EventPhotoEntity(
                                     eventId = event.id!!,
                                     photoId = event.mainPhotoId,

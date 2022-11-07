@@ -1,6 +1,5 @@
 package ru.buhinder.alcopartyservice.service.validation
 
-import java.util.UUID
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import reactor.kotlin.core.publisher.switchIfEmpty
@@ -12,6 +11,7 @@ import ru.buhinder.alcopartyservice.entity.EventEntity
 import ru.buhinder.alcopartyservice.entity.enums.EventStatus
 import ru.buhinder.alcopartyservice.repository.facade.EventAlcoholicDaoFacade
 import ru.buhinder.alcopartyservice.repository.facade.EventDaoFacade
+import java.util.UUID
 
 @Service
 class EventAlcoholicValidationService(
@@ -69,6 +69,19 @@ class EventAlcoholicValidationService(
 
     fun validateUserIsTheEventOwner(eventId: UUID, alcoholicId: UUID): Mono<Boolean> {
         return eventDaoFacade.getById(eventId)
+            .map {
+                if (it.createdBy != alcoholicId) {
+                    throw InsufficientPermissionException(
+                        message = "Insufficient permission. Must be the event owner",
+                        payload = emptyMap()
+                    )
+                }
+                true
+            }
+    }
+
+    fun validateUserIsTheEventOwner(eventEntity: EventEntity, alcoholicId: UUID): Mono<Boolean> {
+        return eventEntity.toMono()
             .map {
                 if (it.createdBy != alcoholicId) {
                     throw InsufficientPermissionException(

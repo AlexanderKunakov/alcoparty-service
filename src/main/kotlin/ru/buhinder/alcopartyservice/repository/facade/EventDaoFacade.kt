@@ -1,8 +1,5 @@
 package ru.buhinder.alcopartyservice.repository.facade
 
-import org.springframework.data.r2dbc.core.R2dbcEntityOperations
-import org.springframework.data.relational.core.query.Criteria
-import org.springframework.data.relational.core.query.Query
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -14,15 +11,15 @@ import java.util.UUID
 
 @Repository
 class EventDaoFacade(
-    private val r2dbcEntityOperations: R2dbcEntityOperations,
     private val eventRepository: EventRepository,
+    private val eventImageDaoFacade: EventImageDaoFacade,
 ) {
     companion object {
         const val NOT_FOUND_MESSAGE = "Event not found"
     }
 
     fun insert(eventEntity: EventEntity): Mono<EventEntity> {
-        return r2dbcEntityOperations.insert(eventEntity)
+        return eventRepository.save(eventEntity)
     }
 
     fun deleteById(eventId: UUID): Mono<Void> {
@@ -30,10 +27,7 @@ class EventDaoFacade(
     }
 
     fun getById(eventId: UUID): Mono<EventEntity> {
-        return r2dbcEntityOperations.selectOne(
-            Query.query(Criteria.where("id").`is`(eventId)),
-            EventEntity::class.java
-        )
+        return eventRepository.findById(eventId)
             .switchIfEmpty {
                 Mono.error(
                     EntityNotFoundException(
@@ -92,11 +86,20 @@ class EventDaoFacade(
             }
     }
 
-    fun findAllByAlcoholicIdAndIsNotBanned(alcoholicId: UUID, page: Int, pageSize: Int): Flux<EventEntity> {
+    fun findAllByAlcoholicIdAndIsNotBanned(
+        alcoholicId: UUID,
+        page: Int,
+        pageSize: Int
+    ): Flux<EventEntity> {
         return eventRepository.findAllByAlcoholicIdAndIsNotBanned(alcoholicId, page, pageSize)
     }
 
     fun countAllByAlcoholicIdAndIsNotBanned(alcoholicId: UUID): Mono<Long> {
         return eventRepository.countAllByAlcoholicIdAndIsNotBanned(alcoholicId)
+    }
+
+    fun findByImageId(imageId: UUID): Mono<EventEntity> {
+        return eventImageDaoFacade.findById(imageId)
+            .flatMap { eventRepository.findById(it.id!!) }
     }
 }

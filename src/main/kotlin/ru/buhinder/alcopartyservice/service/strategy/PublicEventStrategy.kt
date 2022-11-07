@@ -1,6 +1,5 @@
 package ru.buhinder.alcopartyservice.service.strategy
 
-import java.util.UUID
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
@@ -14,6 +13,7 @@ import ru.buhinder.alcopartyservice.repository.facade.EventAlcoholicDaoFacade
 import ru.buhinder.alcopartyservice.service.MinioService
 import ru.buhinder.alcopartyservice.service.validation.EventAlcoholicValidationService
 import ru.buhinder.alcopartyservice.service.validation.EventValidationService
+import java.util.UUID
 
 @Component
 class PublicEventStrategy(
@@ -26,7 +26,7 @@ class PublicEventStrategy(
 
     override fun create(dto: EventDto, alcoholicId: UUID, mainImage: FilePart?): Mono<EventResponse> {
         return if (mainImage != null) {
-            minioService.saveEventImage(mainImage)
+            minioService.saveImage(mainImage)
                 .flatMap { eventCreatorDelegate.create(dto, alcoholicId, it) }
         } else {
             eventCreatorDelegate.create(dto, alcoholicId, null)

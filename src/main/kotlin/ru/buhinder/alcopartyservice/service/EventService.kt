@@ -1,6 +1,5 @@
 package ru.buhinder.alcopartyservice.service
 
-import java.util.UUID
 import org.springframework.core.convert.ConversionService
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
@@ -14,40 +13,32 @@ import ru.buhinder.alcopartyservice.dto.response.IdResponse
 import ru.buhinder.alcopartyservice.dto.response.MultipleEventResponse
 import ru.buhinder.alcopartyservice.dto.response.PageableResponse
 import ru.buhinder.alcopartyservice.dto.response.SingleEventResponse
-import ru.buhinder.alcopartyservice.entity.EventPhotoEntity
-import ru.buhinder.alcopartyservice.entity.enums.PhotoType.ACTIVE
 import ru.buhinder.alcopartyservice.repository.facade.EventAlcoholicDaoFacade
 import ru.buhinder.alcopartyservice.repository.facade.EventDaoFacade
-import ru.buhinder.alcopartyservice.repository.facade.EventPhotoDaoFacade
+import ru.buhinder.alcopartyservice.repository.facade.EventImageDaoFacade
 import ru.buhinder.alcopartyservice.service.strategy.EventStrategyRegistry
 import ru.buhinder.alcopartyservice.service.validation.EventAlcoholicValidationService
 import ru.buhinder.alcopartyservice.service.validation.ImageValidationService
-import ru.buhinder.alcopartyservice.util.removeFirst
+import java.util.UUID
 
 @Service
 class EventService(
     private val eventStrategyRegistry: EventStrategyRegistry,
     private val eventDaoFacade: EventDaoFacade,
     private val conversionService: ConversionService,
-    private val minioService: MinioService,
-    private val eventPhotoDaoFacade: EventPhotoDaoFacade,
+    private val eventImageDaoFacade: EventImageDaoFacade,
     private val imageValidationService: ImageValidationService,
     private val eventAlcoholicDaoFacade: EventAlcoholicDaoFacade,
     private val eventAlcoholicValidationService: EventAlcoholicValidationService,
     private val paginationService: PaginationService,
+    private val eventImageService: EventImageService,
 ) {
 
     fun create(dto: EventDto, alcoholicId: UUID, images: List<FilePart>): Mono<IdResponse> {
         return imageValidationService.validateImageFormat(images)
             .flatMap { eventStrategyRegistry.get(dto.type) }
             .flatMap { it.create(dto, alcoholicId, images.firstOrNull()) }
-            .flatMap { res ->
-                val eventId = res.id
-                minioService.saveEventImages(images.removeFirst())
-                    .map { buildPhotosList(it, eventId) }
-                    .flatMap { eventPhotoDaoFacade.insertAll(it) }
-                    .map { IdResponse(eventId) }
-            }
+            .flatMap { eventImageService.saveEventImages(images, it.id) }
     }
 
     fun join(eventId: UUID, alcoholicId: UUID): Mono<IdResponse> {
@@ -84,9 +75,11 @@ class EventService(
         return eventDaoFacade.findAllAndAlcoholicIsNotBanned(alcoholicId, page, pageSize)
             .flatMap { res ->
                 val eventId = res.id!!
-                eventAlcoholicDaoFacade.findAllByEventId(eventId).any { it.alcoholicId == alcoholicId }
+                eventAlcoholicDaoFacade.findAllByEventId(eventId)
+                    .any { it.alcoholicId == alcoholicId }
                     .map {
-                        val eventResponse = conversionService.convert(res, EventResponse::class.java)!!
+                        val eventResponse =
+                            conversionService.convert(res, EventResponse::class.java)!!
                         MultipleEventResponse(eventResponse, it)
                     }
             }
@@ -102,36 +95,31 @@ class EventService(
     fun getEventById(eventId: UUID, alcoholicId: UUID): Mono<SingleEventResponse> {
         return eventDaoFacade.getByIdAndAlcoholicIsNotBanned(eventId, alcoholicId)
             .map { conversionService.convert(it, EventResponse::class.java)!! }
-            .flatMap { res ->
-                eventPhotoDaoFacade.findAllByEventIdAndTypeNotMain(eventId)
-                    .map { it.photoId }
-                    .collectList()
-                    .flatMap { photos ->
-                        eventAlcoholicDaoFacade.findAllByEventId(eventId)
-                            .map { it.alcoholicId }
-                            .collectList()
-                            .map { SingleEventResponse(res, photos, it) }
-                    }
-            }
+            .flatMap { enrichEventResponseWithPhotos(it) }
     }
 
     fun getEventByLinkId(invitationLink: UUID): Mono<SingleEventResponse> {
         return eventDaoFacade.getByInvitationLinkAndNotEnded(invitationLink)
             .map { conversionService.convert(it, EventResponse::class.java)!! }
-            .flatMap { event ->
-                eventPhotoDaoFacade.findAllByEventIdAndTypeNotMain(event.id)
-                    .map { it.photoId }
-                    .collectList()
-                    .flatMap { photos ->
-                        eventAlcoholicDaoFacade.findAllByEventId(event.id)
-                            .map { it.alcoholicId }
-                            .collectList()
-                            .map { SingleEventResponse(event, photos, it) }
-                    }
-            }
+            .flatMap { enrichEventResponseWithPhotos(it) }
     }
 
-    fun findAllByAlcoholicId(alcoholicId: UUID, page: Int, pageSize: Int): Mono<PageableResponse<EventResponse>> {
+    private fun enrichEventResponseWithPhotos(eventResponse: EventResponse) =
+        eventImageDaoFacade.findAllByEventIdAndTypeNotMain(eventResponse.id)
+            .map { it.photoId }
+            .collectList()
+            .flatMap { photos ->
+                eventAlcoholicDaoFacade.findAllByEventId(eventResponse.id)
+                    .map { it.alcoholicId }
+                    .collectList()
+                    .map { SingleEventResponse(eventResponse, photos, it) }
+            }
+
+    fun findAllByAlcoholicId(
+        alcoholicId: UUID,
+        page: Int,
+        pageSize: Int
+    ): Mono<PageableResponse<EventResponse>> {
         return eventDaoFacade.findAllByAlcoholicIdAndIsNotBanned(alcoholicId, page, pageSize)
             .map { conversionService.convert(it, EventResponse::class.java)!! }
             .collectList()
@@ -141,10 +129,4 @@ class EventService(
                 PageableResponse(events.t1, pagination)
             }
     }
-
-    private fun buildPhotosList(photosIds: Set<UUID>, eventId: UUID): List<EventPhotoEntity> {
-        return photosIds
-            .map { EventPhotoEntity(eventId = eventId, photoId = it, type = ACTIVE) }
-    }
-
 }
