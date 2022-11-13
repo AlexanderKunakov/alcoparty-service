@@ -41,7 +41,7 @@ class SecurityConfig {
 
             .authorizeExchange()
             .pathMatchers(HttpMethod.OPTIONS).permitAll()
-            .pathMatchers("/api/alcoparty/image/**").permitAll()
+            .pathMatchers(HttpMethod.GET, "/api/alcoparty/photo/**").permitAll()
 
             .and()
 

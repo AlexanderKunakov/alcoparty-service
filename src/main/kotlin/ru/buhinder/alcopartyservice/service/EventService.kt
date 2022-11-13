@@ -15,10 +15,10 @@ import ru.buhinder.alcopartyservice.dto.response.PageableResponse
 import ru.buhinder.alcopartyservice.dto.response.SingleEventResponse
 import ru.buhinder.alcopartyservice.repository.facade.EventAlcoholicDaoFacade
 import ru.buhinder.alcopartyservice.repository.facade.EventDaoFacade
-import ru.buhinder.alcopartyservice.repository.facade.EventImageDaoFacade
 import ru.buhinder.alcopartyservice.service.strategy.EventStrategyRegistry
 import ru.buhinder.alcopartyservice.service.validation.EventAlcoholicValidationService
-import ru.buhinder.alcopartyservice.service.validation.ImageValidationService
+import ru.buhinder.alcopartyservice.service.validation.PhotoValidationService
+import ru.buhinder.alcopartyservice.util.removeFirst
 import java.util.UUID
 
 @Service
@@ -26,19 +26,21 @@ class EventService(
     private val eventStrategyRegistry: EventStrategyRegistry,
     private val eventDaoFacade: EventDaoFacade,
     private val conversionService: ConversionService,
-    private val eventImageDaoFacade: EventImageDaoFacade,
-    private val imageValidationService: ImageValidationService,
+    private val photoValidationService: PhotoValidationService,
     private val eventAlcoholicDaoFacade: EventAlcoholicDaoFacade,
     private val eventAlcoholicValidationService: EventAlcoholicValidationService,
     private val paginationService: PaginationService,
-    private val eventImageService: EventImageService,
+    private val eventPhotoService: EventPhotoService,
 ) {
 
-    fun create(dto: EventDto, alcoholicId: UUID, images: List<FilePart>): Mono<IdResponse> {
-        return imageValidationService.validateImageFormat(images)
+    fun create(dto: EventDto, alcoholicId: UUID, photos: List<FilePart>): Mono<IdResponse> {
+        return photoValidationService.validatePhotoFormat(photos)
             .flatMap { eventStrategyRegistry.get(dto.type) }
-            .flatMap { it.create(dto, alcoholicId, images.firstOrNull()) }
-            .flatMap { eventImageService.saveEventImages(images, it.id) }
+            .flatMap { it.create(dto, alcoholicId, photos.firstOrNull()) }
+            .flatMap { eventResponse ->
+                eventPhotoService.savePhotos(photos.removeFirst(), eventResponse.id)
+                    .map { IdResponse(eventResponse.id) }
+            }
     }
 
     fun join(eventId: UUID, alcoholicId: UUID): Mono<IdResponse> {
@@ -105,8 +107,8 @@ class EventService(
     }
 
     private fun enrichEventResponseWithPhotos(eventResponse: EventResponse) =
-        eventImageDaoFacade.findAllByEventIdAndTypeNotMain(eventResponse.id)
-            .map { it.photoId }
+        eventPhotoService.findAllNotMainByEventId(eventResponse.id)
+            .map { it.id!! }
             .collectList()
             .flatMap { photos ->
                 eventAlcoholicDaoFacade.findAllByEventId(eventResponse.id)

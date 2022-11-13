@@ -3,14 +3,16 @@ package ru.buhinder.alcopartyservice.repository.facade
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.kotlin.core.publisher.switchIfEmpty
+import ru.buhinder.alcopartyservice.controller.advice.exception.EntityNotFoundException
 import ru.buhinder.alcopartyservice.entity.EventPhotoEntity
 import ru.buhinder.alcopartyservice.entity.enums.PhotoType
-import ru.buhinder.alcopartyservice.repository.EventImageRepository
+import ru.buhinder.alcopartyservice.repository.EventPhotoRepository
 import java.util.UUID
 
 @Repository
-class EventImageDaoFacade(
-    private val eventPhotoRepository: EventImageRepository,
+class EventPhotoDaoFacade(
+    private val eventPhotoRepository: EventPhotoRepository,
 ) {
     fun save(eventPhotoEntity: EventPhotoEntity): Mono<EventPhotoEntity> {
         return eventPhotoRepository.save(eventPhotoEntity)
@@ -23,20 +25,36 @@ class EventImageDaoFacade(
     }
 
     fun findAllByEventIdAndTypeNotMain(eventId: UUID): Flux<EventPhotoEntity> {
-        return eventPhotoRepository.findAllByEventIdAndTypeNot(eventId, PhotoType.MAIN)
-    }
-
-    fun findNextMainPhotoEntity(eventId: UUID): Mono<EventPhotoEntity> {
-        return eventPhotoRepository.findFirstByEventIdAndTypeNotOrderByCreatedAtAsc(
+        return eventPhotoRepository.findAllByEventIdAndTypeNotIn(
             eventId,
-            PhotoType.MAIN
+            listOf(PhotoType.MAIN, PhotoType.DELETED)
         )
     }
 
-    fun findById(imageId: UUID): Mono<EventPhotoEntity> = eventPhotoRepository.findById(imageId)
+    fun findNextMainPhotoEntity(eventId: UUID): Mono<EventPhotoEntity> {
+        return eventPhotoRepository.findFirstByEventIdAndTypeNotInOrderByCreatedAtAsc(
+            eventId,
+            listOf(PhotoType.MAIN, PhotoType.DELETED)
+        )
+    }
+
+    fun getById(id: UUID): Mono<EventPhotoEntity> {
+        return eventPhotoRepository.findById(id)
+            .switchIfEmpty {
+                Mono.error { EntityNotFoundException(message = "Photo with id $id not found") }
+            }
+    }
 
     fun delete(eventPhotoEntity: EventPhotoEntity): Mono<Void> {
         return changePhotoType(eventPhotoEntity, PhotoType.DELETED).then()
+    }
+
+    fun changePhotoTypeById(
+        id: UUID,
+        newType: PhotoType,
+    ): Mono<EventPhotoEntity> {
+        return getById(id)
+            .flatMap { changePhotoType(it, newType) }
     }
 
     fun changePhotoType(

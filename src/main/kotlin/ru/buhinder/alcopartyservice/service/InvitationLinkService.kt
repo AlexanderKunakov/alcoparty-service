@@ -1,8 +1,5 @@
 package ru.buhinder.alcopartyservice.service
 
-import java.time.Duration
-import java.time.Instant
-import java.util.UUID
 import org.springframework.core.convert.ConversionService
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
@@ -21,6 +18,9 @@ import ru.buhinder.alcopartyservice.repository.facade.InvitationLinkDaoFacade
 import ru.buhinder.alcopartyservice.service.validation.EventAlcoholicValidationService
 import ru.buhinder.alcopartyservice.service.validation.EventValidationService
 import ru.buhinder.alcopartyservice.service.validation.InvitationLinkValidationService
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
 
 @Service
 class InvitationLinkService(
@@ -46,9 +46,27 @@ class InvitationLinkService(
             .flatMap { eventDaoFacade.getByInvitationLinkAndNotEnded(invitationLink) }
             .flatMap { event ->
                 validate(event, alcoholicId)
-                    .flatMap { eventAlcoholicValidationService.validateAlcoholicIsNotBanned(it, alcoholicId) }
-                    .flatMap { eventAlcoholicValidationService.validateAlcoholicIsNotAlreadyParticipating(it, alcoholicId) }
-                    .flatMap { eventAlcoholicDaoFacade.insert(EventAlcoholicEntity(UUID.randomUUID(), it, alcoholicId)) }
+                    .flatMap {
+                        eventAlcoholicValidationService.validateAlcoholicIsNotBanned(
+                            it,
+                            alcoholicId
+                        )
+                    }
+                    .flatMap {
+                        eventAlcoholicValidationService.validateAlcoholicIsNotAlreadyParticipating(
+                            it,
+                            alcoholicId
+                        )
+                    }
+                    .flatMap {
+                        eventAlcoholicDaoFacade.save(
+                            EventAlcoholicEntity(
+                                UUID.randomUUID(),
+                                it,
+                                alcoholicId
+                            )
+                        )
+                    }
                     .flatMap { invitationLinkDaoFacade.decrementUsageAmount(invitationLink) }
                     .map { IdResponse(event.id!!) }
             }

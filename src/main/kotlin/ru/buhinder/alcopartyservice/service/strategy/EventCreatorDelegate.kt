@@ -8,12 +8,9 @@ import ru.buhinder.alcopartyservice.dto.EventDto
 import ru.buhinder.alcopartyservice.dto.response.EventResponse
 import ru.buhinder.alcopartyservice.entity.EventAlcoholicEntity
 import ru.buhinder.alcopartyservice.entity.EventEntity
-import ru.buhinder.alcopartyservice.entity.EventPhotoEntity
-import ru.buhinder.alcopartyservice.entity.enums.PhotoType
 import ru.buhinder.alcopartyservice.model.EventModel
 import ru.buhinder.alcopartyservice.repository.facade.EventAlcoholicDaoFacade
 import ru.buhinder.alcopartyservice.repository.facade.EventDaoFacade
-import ru.buhinder.alcopartyservice.repository.facade.EventImageDaoFacade
 import ru.buhinder.alcopartyservice.service.validation.EventValidationService
 import java.util.UUID
 
@@ -23,27 +20,18 @@ class EventCreatorDelegate(
     private val eventAlcoholicDaoFacade: EventAlcoholicDaoFacade,
     private val eventValidationService: EventValidationService,
     private val conversionService: ConversionService,
-    private val eventImageDaoFacade: EventImageDaoFacade,
 ) {
-    fun create(dto: EventDto, alcoholicId: UUID, mainImageId: UUID?): Mono<EventResponse> {
+    fun create(dto: EventDto, alcoholicId: UUID, mainPhotoId: UUID?): Mono<EventResponse> {
         return dto.toMono()
             .flatMap { eventValidationService.validateDates(dto) }
-            .map { conversionService.convert(EventModel(it, alcoholicId, mainImageId), EventEntity::class.java)!! }
+            .map {
+                conversionService.convert(
+                    EventModel(it, alcoholicId, mainPhotoId),
+                    EventEntity::class.java
+                )!!
+            }
             .flatMap { eventEntity ->
                 eventDaoFacade.save(eventEntity)
-                    .flatMap { event ->
-                        if (event.mainPhotoId != null) {
-                            eventImageDaoFacade.save(
-                                EventPhotoEntity(
-                                    eventId = event.id!!,
-                                    photoId = event.mainPhotoId!!,
-                                    type = PhotoType.MAIN
-                                )
-                            ).map { it }
-                        } else {
-                            event.toMono()
-                        }
-                    }
                     .map { buildAlcoholicsList(dto.alcoholicsIds, alcoholicId, eventEntity.id!!) }
                     .flatMap { eventAlcoholicDaoFacade.insertAll(it) }
                     .map { eventEntity }

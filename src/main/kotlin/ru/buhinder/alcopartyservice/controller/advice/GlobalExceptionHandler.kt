@@ -1,7 +1,5 @@
 package ru.buhinder.alcopartyservice.controller.advice
 
-import java.util.StringJoiner
-import java.util.stream.Collectors
 import org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
 import org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE
 import org.springframework.http.ResponseEntity
@@ -14,6 +12,8 @@ import ru.buhinder.alcopartyservice.config.LoggerDelegate
 import ru.buhinder.alcopartyservice.controller.advice.dto.AlcoholicErrorCode.VALIDATION_ERROR
 import ru.buhinder.alcopartyservice.controller.advice.dto.ErrorInfoDto
 import ru.buhinder.alcopartyservice.controller.advice.exception.AlcoholicApiException
+import java.util.StringJoiner
+import java.util.stream.Collectors
 
 @ControllerAdvice
 class GlobalExceptionHandler {
@@ -22,6 +22,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(WebExchangeBindException::class)
     fun handleException(exception: WebExchangeBindException): ResponseEntity<ErrorInfoDto> {
+        logger.error("Got unexpected exception", exception)
         val messageJoiner = StringJoiner("; ")
         val bindingResult = exception.bindingResult
         if (bindingResult.hasGlobalErrors()) {
@@ -46,6 +47,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(ServerWebInputException::class)
     fun handleWebInputException(exception: ServerWebInputException): ResponseEntity<ErrorInfoDto> {
+        logger.error("Got unexpected exception", exception)
         val apiErrorDto = ErrorInfoDto(
             code = VALIDATION_ERROR,
             message = exception.cause?.message,
@@ -57,6 +59,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(AlcoholicApiException::class)
     fun handleCommonException(exception: AlcoholicApiException): ResponseEntity<ErrorInfoDto> {
+        logger.error("Got unexpected exception", exception)
         val apiErrorDto = ErrorInfoDto(exception)
         val status = exception.responseStatus
         return ResponseEntity.status(status)
@@ -65,6 +68,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(WebClientException::class)
     fun handleWebClientException(exception: WebClientException): ResponseEntity<ErrorInfoDto> {
+        logger.error("Got unexpected exception", exception)
         val apiErrorDto = ErrorInfoDto(exception)
         return ResponseEntity.status(SERVICE_UNAVAILABLE)
             .body(apiErrorDto)

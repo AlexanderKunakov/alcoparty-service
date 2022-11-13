@@ -4,6 +4,6 @@ import java.util.UUID
 
 data class SingleEventResponse(
     val event: EventResponse,
-    val images: List<UUID>,
+    val photos: List<UUID>,
     val participants: List<UUID>,
 )

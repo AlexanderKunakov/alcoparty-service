@@ -9,7 +9,7 @@ class EntityNotFoundException(
     responseStatus: HttpStatus = NOT_FOUND,
     code: ErrorCode = AlcoholicErrorCode.NOT_FOUND,
     message: String,
-    payload: Map<String, Any>,
+    payload: Map<String, Any> = emptyMap(),
 ) : AlcoholicApiException(
     responseStatus = responseStatus,
     code = code,

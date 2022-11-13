@@ -22,20 +22,20 @@ class MinioService(
     private val minioProperties: MinioProperties,
 ) {
 
-    fun saveImages(images: List<FilePart>): Mono<Set<UUID>> {
-        return Flux.fromIterable(images)
+    fun savePhotos(photos: List<FilePart>): Mono<Set<UUID>> {
+        return Flux.fromIterable(photos)
             .publishOn(Schedulers.boundedElastic())
-            .map { saveOneImage(it) }
+            .map { saveOnePhoto(it) }
             .collect(Collectors.toSet())
     }
 
-    fun saveImage(image: FilePart): Mono<UUID> {
-        return image.toMono()
+    fun savePhoto(photo: FilePart): Mono<UUID> {
+        return photo.toMono()
             .publishOn(Schedulers.boundedElastic())
-            .map { saveOneImage(it) }
+            .map { saveOnePhoto(it) }
     }
 
-    private fun saveOneImage(it: FilePart): UUID {
+    private fun saveOnePhoto(it: FilePart): UUID {
         val temp = File(it.filename())
         temp.canWrite()
         temp.canRead()
@@ -53,8 +53,8 @@ class MinioService(
         return UUID.fromString(objectUUID)
     }
 
-    fun getImage(imageId: UUID): Mono<ByteArray> {
-        return Mono.just(imageId)
+    fun getPhoto(photoId: UUID): Mono<ByteArray> {
+        return Mono.just(photoId)
             .map {
                 minioClient.getObject(
                     GetObjectArgs.builder()
@@ -66,19 +66,4 @@ class MinioService(
             .publishOn(Schedulers.boundedElastic())
             .map { it.readAllBytes() }
     }
-
-    fun getImages(imagesIds: Set<UUID>): Flux<ByteArray> {
-        return Flux.fromIterable(imagesIds)
-            .publishOn(Schedulers.boundedElastic())
-            .map {
-                minioClient.getObject(
-                    GetObjectArgs.builder()
-                        .bucket(minioProperties.bucket)
-                        .`object`("$it")
-                        .build()
-                )
-                    .readAllBytes()
-            }
-    }
-
 }

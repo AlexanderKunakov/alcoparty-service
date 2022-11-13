@@ -9,7 +9,7 @@ class EntityCannotBeUpdatedException(
     responseStatus: HttpStatus = CONFLICT,
     code: ErrorCode = CANNOT_BE_UPDATED,
     message: String,
-    payload: Map<String, Any>,
+    payload: Map<String, Any> = emptyMap(),
 ) : AlcoholicApiException(
     responseStatus = responseStatus,
     code = code,

@@ -12,7 +12,7 @@ import java.util.UUID
 @Repository
 class EventDaoFacade(
     private val eventRepository: EventRepository,
-    private val eventImageDaoFacade: EventImageDaoFacade,
+    private val eventPhotoDaoFacade: EventPhotoDaoFacade,
 ) {
     companion object {
         const val NOT_FOUND_MESSAGE = "Event not found"
@@ -44,10 +44,6 @@ class EventDaoFacade(
 
     fun countAllAndAlcoholicIsNotBanned(alcoholicId: UUID): Mono<Long> {
         return eventRepository.countAllAndAlcoholicIsNotBanned(alcoholicId)
-    }
-
-    fun findByIdAndAlcoholicIsNotBanned(eventId: UUID, alcoholicId: UUID): Mono<EventEntity> {
-        return eventRepository.findByIdAndAlcoholicIsNotBanned(eventId, alcoholicId)
     }
 
     fun getByIdAndAlcoholicIsNotBanned(eventId: UUID, alcoholicId: UUID): Mono<EventEntity> {
@@ -96,10 +92,5 @@ class EventDaoFacade(
 
     fun countAllByAlcoholicIdAndIsNotBanned(alcoholicId: UUID): Mono<Long> {
         return eventRepository.countAllByAlcoholicIdAndIsNotBanned(alcoholicId)
-    }
-
-    fun findByImageId(imageId: UUID): Mono<EventEntity> {
-        return eventImageDaoFacade.findById(imageId)
-            .flatMap { eventRepository.findById(it.id!!) }
     }
 }

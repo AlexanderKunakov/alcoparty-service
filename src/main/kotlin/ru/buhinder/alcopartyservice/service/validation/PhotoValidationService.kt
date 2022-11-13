@@ -8,10 +8,10 @@ import reactor.kotlin.core.publisher.toFlux
 import ru.buhinder.alcopartyservice.controller.advice.exception.EntityCannotBeCreatedException
 
 @Service
-class ImageValidationService {
+class PhotoValidationService {
 
-    fun validateImageFormat(images: List<FilePart>): Mono<Boolean> {
-        return images.toFlux()
+    fun validatePhotoFormat(photos: List<FilePart>): Mono<Boolean> {
+        return photos.toFlux()
             .any {
                 val contentType = it.headers().contentType
                 contentType == null || contentType != MediaType.IMAGE_JPEG

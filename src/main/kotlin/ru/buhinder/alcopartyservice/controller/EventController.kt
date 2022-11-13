@@ -1,9 +1,5 @@
 package ru.buhinder.alcopartyservice.controller
 
-import java.security.Principal
-import java.util.UUID
-import javax.validation.Valid
-import javax.validation.constraints.Min
 import org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
@@ -29,6 +25,10 @@ import ru.buhinder.alcopartyservice.dto.response.SingleEventResponse
 import ru.buhinder.alcopartyservice.service.EventAlcoholicService
 import ru.buhinder.alcopartyservice.service.EventService
 import ru.buhinder.alcopartyservice.service.InvitationLinkService
+import java.security.Principal
+import java.util.UUID
+import javax.validation.Valid
+import javax.validation.constraints.Min
 
 @Validated
 @RestController
@@ -37,7 +37,7 @@ class EventController(
     private val eventService: EventService,
     private val eventAlcoholicService: EventAlcoholicService,
     private val paginationProperties: PaginationProperties,
-    private val linkService: InvitationLinkService
+    private val linkService: InvitationLinkService,
 ) {
 
     @PostMapping(consumes = [MULTIPART_FORM_DATA_VALUE])
@@ -46,7 +46,7 @@ class EventController(
         @RequestPart(value = "event")
         dto: EventDto,
         principal: Principal,
-        @RequestPart(value = "images", required = false)
+        @RequestPart(value = "photos", required = false)
         files: Flux<FilePart>,
     ): Mono<ResponseEntity<IdResponse>> {
         return files
@@ -131,5 +131,4 @@ class EventController(
             UUID.fromString(principal.name),
         )
     }
-
 }

@@ -1,9 +1,5 @@
 package ru.buhinder.alcopartyservice.repository.facade
 
-import org.springframework.data.r2dbc.core.R2dbcEntityOperations
-import org.springframework.data.relational.core.query.Criteria
-import org.springframework.data.relational.core.query.CriteriaDefinition
-import org.springframework.data.relational.core.query.Query
 import org.springframework.stereotype.Repository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -14,13 +10,12 @@ import java.util.UUID
 
 @Repository
 class EventAlcoholicDaoFacade(
-    private val r2dbcEntityOperations: R2dbcEntityOperations,
     private val eventAlcoholicRepository: EventAlcoholicRepository,
 ) {
     private val logger by LoggerDelegate()
 
-    fun insert(eventAlcoholicEntity: EventAlcoholicEntity): Mono<EventAlcoholicEntity> {
-        return r2dbcEntityOperations.insert(eventAlcoholicEntity)
+    fun save(eventAlcoholicEntity: EventAlcoholicEntity): Mono<EventAlcoholicEntity> {
+        return eventAlcoholicRepository.save(eventAlcoholicEntity)
     }
 
     fun update(eventAlcoholicEntity: EventAlcoholicEntity): Mono<EventAlcoholicEntity> {
@@ -40,14 +35,9 @@ class EventAlcoholicDaoFacade(
     fun findByEventIdAndAlcoholicId(eventId: UUID, alcoholicId: UUID): Mono<EventAlcoholicEntity> {
         return Mono.just(logger.info("Trying to find alcoholic with id $alcoholicId for event with id $eventId"))
             .flatMap {
-                r2dbcEntityOperations.selectOne(
-                    Query.query(
-                        CriteriaDefinition.from(
-                            Criteria.where("event_id").`is`(eventId),
-                            Criteria.where("alcoholic_id").`is`(alcoholicId)
-                        )
-                    ),
-                    EventAlcoholicEntity::class.java
+                eventAlcoholicRepository.findByEventIdAndAlcoholicIdAndIsBannedIsFalse(
+                    eventId,
+                    alcoholicId
                 )
             }
             .doOnNext { logger.info("Found alcoholic with id $alcoholicId for event with id $eventId") }

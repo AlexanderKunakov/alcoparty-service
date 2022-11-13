@@ -7,17 +7,17 @@ import ru.buhinder.alcopartyservice.entity.EventPhotoEntity
 import ru.buhinder.alcopartyservice.entity.enums.PhotoType
 import java.util.UUID
 
-interface EventImageRepository : ReactiveCrudRepository<EventPhotoEntity, UUID> {
+interface EventPhotoRepository : ReactiveCrudRepository<EventPhotoEntity, UUID> {
 
     fun findAllByEventId(eventId: UUID): Flux<EventPhotoEntity>
 
     fun findByEventIdAndType(eventId: UUID, type: PhotoType): Mono<EventPhotoEntity>
 
-    fun findAllByEventIdAndTypeNot(eventId: UUID, type: PhotoType): Flux<EventPhotoEntity>
+    fun findAllByEventIdAndTypeNotIn(eventId: UUID, types: List<PhotoType>): Flux<EventPhotoEntity>
 
-    fun findFirstByEventIdAndTypeNotOrderByCreatedAtAsc(
+    fun findFirstByEventIdAndTypeNotInOrderByCreatedAtAsc(
         eventId: UUID,
-        type: PhotoType
+        types: List<PhotoType>
     ): Mono<EventPhotoEntity>
 
 }
